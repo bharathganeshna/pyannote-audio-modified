@@ -122,12 +122,11 @@ class SpeakerDiarization(SpeakerDiarizationMixin, Pipeline):
         embedding_batch_size: int = 1,
         segmentation_batch_size: int = 1,
         der_variant: Optional[dict] = None,
-        use_auth_token: Union[Text, None] = None,
     ):
         super().__init__()
 
         self.segmentation_model = segmentation
-        model: Model = get_model(segmentation, use_auth_token=use_auth_token)
+        model: Model = get_model(segmentation)
 
         self.segmentation_step = segmentation_step
 
