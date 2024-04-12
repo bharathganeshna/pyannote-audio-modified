@@ -53,7 +53,6 @@ class Pipeline(_Pipeline):
         cls,
         checkpoint_path: Union[Text, Path],
         hparams_file: Union[Text, Path] = None,
-        use_auth_token: Union[Text, None] = None,
         cache_dir: Union[Path, Text] = CACHE_DIR,
     ) -> "Pipeline":
         """Load pretrained pipeline
@@ -71,10 +70,12 @@ class Pipeline(_Pipeline):
         cache_dir: Path or str, optional
             Path to model cache directory. Defauorch/pyannote" when unset.
         """
-
-        checkpoint_path = str(checkpoint_path)
-
-        if os.path.isfile(checkpoint_path):
+        if isinstance(checkpoint_path, Path):
+            checkpoint_path = str(checkpoint_path)
+        if not os.path.isfile(checkpoint_path):
+            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
+        
+        
             config_yml = checkpoint_path
 
         else:
@@ -98,7 +99,7 @@ class Pipeline(_Pipeline):
                     # proxies=None,
                     # etag_timeout=10,
                     # resume_download=False,
-                    use_auth_token=use_auth_token,
+                    # use_auth_token=use_auth_token,
                     # local_files_only=False,
                     # legacy_cache_layout=False,
                 )
@@ -111,8 +112,8 @@ It might be because the pipeline is private or gated so make
 sure to authenticate. Visit https://hf.co/settings/tokens to
 create your access token and retry with:
 
-   >>> Pipeline.from_pretrained('{model_id}',
-   ...                          use_auth_token=YOUR_AUTH_TOKEN)
+   >>> Pipeline.from_pretrained('{model_id}'
+   ...                          )
 
 If this still does not work, it might be because the pipeline is gated:
 visit https://hf.co/{model_id} to accept the user conditions."""
@@ -133,7 +134,6 @@ visit https://hf.co/{model_id} to accept the user conditions."""
             pipeline_name, default_module_name="pyannote.pipeline.blocks"
         )
         params = config["pipeline"].get("params", {})
-        params.setdefault("use_auth_token", use_auth_token)
         pipeline = Klass(**params)
 
         # freeze  parameters
