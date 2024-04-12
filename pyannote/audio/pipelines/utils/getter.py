@@ -34,7 +34,6 @@ PipelineModel = Union[Model, Text, Mapping]
 
 def get_model(
     model: PipelineModel,
-    use_auth_token: Union[Text, None] = None,
 ) -> Model:
     """Load pretrained model and set it into `eval` mode.
 
@@ -42,48 +41,35 @@ def get_model(
     ---------
     model : Model, str, or dict
         When `Model`, returns `model` as is.
-        When `str`, assumes that this is either the path to a checkpoint or the name of a
-        pretrained model on Huggingface.co and loads with `Model.from_pretrained(model)`
-        When `dict`, loads with `Model.from_pretrained(**model)`.
-    use_auth_token : str, optional
-        When loading a private or gated huggingface.co pipeline, set `use_auth_token`
-        to True or to a string containing your hugginface.co authentication
-        token that can be obtained by visiting https://hf.co/settings/tokens
+        When `str`, assumes that this is the path to a local checkpoint.
+        When `dict`, loads with `Model.from_pretrained(**model)`, assuming local paths.
 
     Returns
     -------
     model : Model
         Model in `eval` mode.
-
-    Examples
-    --------
-    >>> model = get_model("hbredin/VoiceActivityDetection-PyanNet-DIHARD")
-    >>> model = get_model("/path/to/checkpoint.ckpt")
-    >>> model = get_model({"checkpoint": "hbredin/VoiceActivityDetection-PyanNet-DIHARD",
-    ...                    "map_location": torch.device("cuda")})
-
-    See also
-    --------
-    pyannote.audio.core.model.Model.from_pretrained
-
     """
 
     if isinstance(model, Model):
         pass
 
     elif isinstance(model, Text):
-        model = Model.from_pretrained(
-            model, use_auth_token=use_auth_token, strict=False
-        )
+        # Directly load the model from the given path without using use_auth_token
+        if os.path.isfile(model):
+            model = torch.load(model)
+        else:
+            raise FileNotFoundError(f"No model found at path: {model}")
 
     elif isinstance(model, Mapping):
-        model.setdefault("use_auth_token", use_auth_token)
-        model = Model.from_pretrained(**model)
+        if "checkpoint" in model and os.path.isfile(model["checkpoint"]):
+            model = torch.load(model["checkpoint"])
+        else:
+            raise FileNotFoundError(f"No model found at path: {model.get('checkpoint', 'path not specified')}")
 
     else:
         raise TypeError(
             f"Unsupported type ({type(model)}) for loading model: "
-            f"expected `str` or `dict`."
+            f"expected `Model`, `str` or `dict`."
         )
 
     model.eval()
