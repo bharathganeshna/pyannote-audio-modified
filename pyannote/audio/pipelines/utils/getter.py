@@ -31,46 +31,38 @@ from pyannote.audio import Inference, Model
 
 PipelineModel = Union[Model, Text, Mapping]
 
+def get_model(model: Union[str, Mapping]):
+    """Load a pretrained model strictly from local files.
 
-def get_model(
-    model: PipelineModel,
-) -> Model:
-    """Load pretrained model and set it into `eval` mode.
+    Parameters:
+    model (Union[str, Mapping]): Local path to the model file or directory, or a dictionary specifying the path.
 
-    Parameter
-    ---------
-    model : Model, str, or dict
-        When `Model`, returns `model` as is.
-        When `str`, assumes that this is the path to a local checkpoint.
-        When `dict`, loads with `Model.from_pretrained(**model)`, assuming local paths.
-
-    Returns
-    -------
-    model : Model
-        Model in `eval` mode.
+    Returns:
+    torch.nn.Module: The loaded model.
     """
-
-    if isinstance(model, Model):
-        pass
-
-    elif isinstance(model, Text):
-        # Directly load the model from the given path without using use_auth_token
+    if isinstance(model, str):
+        # Assume model is a direct file path
         if os.path.isfile(model):
-            model = torch.load(model)
+            return torch.load(model)
         else:
-            raise FileNotFoundError(f"No model found at path: {model}")
+            # Check if the model path might refer to a directory with a 'model.pth' file
+            model_path = os.path.join(model, 'model.pth')
+            if os.path.isfile(model_path):
+                return torch.load(model_path)
+            else:
+                raise FileNotFoundError(f"No model file found at path: {model} or within directory as 'model.pth'")
 
     elif isinstance(model, Mapping):
-        if "checkpoint" in model and os.path.isfile(model["checkpoint"]):
-            model = torch.load(model["checkpoint"])
+        # Handle dictionary input, expecting a 'checkpoint' key for the model path
+        checkpoint = model.get("checkpoint")
+        if checkpoint and os.path.isfile(checkpoint):
+            return torch.load(checkpoint)
         else:
-            raise FileNotFoundError(f"No model found at path: {model.get('checkpoint', 'path not specified')}")
+            raise FileNotFoundError(f"No model found at path specified by 'checkpoint': {checkpoint}")
 
     else:
-        raise TypeError(
-            f"Unsupported type ({type(model)}) for loading model: "
-            f"expected `Model`, `str` or `dict`."
-        )
+        raise TypeError("Model input must be a string path or a dictionary with a 'checkpoint' key.")
+
 
     model.eval()
     return model
